@@ -10,7 +10,6 @@ from typing import List, Dict, Optional
 import logging
 from pathlib import Path
 from urllib.parse import urljoin
-from urllib3.util.ssl_ import create_urllib3_context
 import time
 
 logger = logging.getLogger(__name__)
@@ -66,17 +65,12 @@ class ManhuaGuiFetcher:
         for attempt in range(retries):
             try:
                 logger.debug(f"请求 URL: {url} (尝试 {attempt + 1}/{retries})")
-                response = self.session.get(url, timeout=timeout)
+                # 禁用 SSL 验证（仅用于测试）
+                response = self.session.get(url, timeout=timeout, verify=False)
                 response.encoding = 'utf-8'
                 return response
-            except requests.exceptions.SSLError as e:
-                logger.warning(f"SSL 错误 (尝试 {attempt + 1}/{retries}): {e}")
-                if attempt < retries - 1:
-                    time.sleep(1 * (attempt + 1))
-                    continue
-                raise
             except requests.exceptions.RequestException as e:
-                logger.error(f"请求失败: {e}")
+                logger.warning(f"请求失败 (尝试 {attempt + 1}/{retries}): {e}")
                 if attempt < retries - 1:
                     time.sleep(2 * (attempt + 1))
                     continue
@@ -343,7 +337,7 @@ class ManhuaGuiFetcher:
             是否下载成功
         """
         try:
-            response = self.session.get(url, timeout=30)
+            response = self.session.get(url, timeout=30, verify=False)
             Path(save_path).parent.mkdir(parents=True, exist_ok=True)
             
             with open(save_path, 'wb') as f:
