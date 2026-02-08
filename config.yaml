@@ -1,0 +1,22 @@
+# 保存路径
+save_path: ~/data/comics
+
+# PostgreSQL 配置
+database:
+  host: localhost
+  port: 5432
+  database: postgres
+  user: postgres
+  password: postgres
+
+# 抓取配置
+fetch:
+  concurrent_downloads: 5  # 并发下载数
+  delay: 1  # 请求延迟（秒）
+  retry: 3  # 重试次数
+  timeout: 30  # 超时时间（秒）
+
+# 日志配置
+logging:
+  level: INFO  # DEBUG, INFO, WARNING, ERROR
+  file: comichub.log
