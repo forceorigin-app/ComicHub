@@ -20,3 +20,8 @@ fetch:
 logging:
   level: INFO  # DEBUG, INFO, WARNING, ERROR
   file: comichub.log
+
+# 代理池服务配置
+proxy_pool_service:
+  url: "http://localhost:5010"
+  enabled: true
