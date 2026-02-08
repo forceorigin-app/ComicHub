@@ -1,0 +1,35 @@
+2026-02-08 13:04:01,530 - db - INFO - 数据库连接成功
+2026-02-08 13:04:01,603 - db - INFO - 数据库表初始化完成
+2026-02-08 13:04:01,605 - ComicHub - INFO - 开始抓取漫画: https://m.manhuagui.com/comic/1128/
+2026-02-08 13:04:04,055 - db - INFO - 漫画已添加/更新: ONE PIECE航海王 (ID: 1)
+2026-02-08 13:04:04,684 - fetcher - INFO - 获取到 626 个章节
+2026-02-08 13:04:05,657 - fetcher - INFO - 获取到 0 张图片
+2026-02-08 13:04:05,657 - ComicHub - WARNING - 未找到图片: https://m.manhuagui.com/comic/1128/9771.html
+2026-02-08 13:04:06,575 - fetcher - INFO - 获取到 0 张图片
+2026-02-08 13:04:06,575 - ComicHub - WARNING - 未找到图片: https://m.manhuagui.com/comic/1128/9772.html
+2026-02-08 13:04:07,408 - fetcher - INFO - 获取到 0 张图片
+2026-02-08 13:04:07,408 - ComicHub - WARNING - 未找到图片: https://m.manhuagui.com/comic/1128/9773.html
+2026-02-08 13:04:08,253 - fetcher - INFO - 获取到 0 张图片
+2026-02-08 13:04:08,253 - ComicHub - WARNING - 未找到图片: https://m.manhuagui.com/comic/1128/9774.html
+2026-02-08 13:04:09,136 - fetcher - INFO - 获取到 0 张图片
+2026-02-08 13:04:09,136 - ComicHub - WARNING - 未找到图片: https://m.manhuagui.com/comic/1128/9775.html
+2026-02-08 13:04:10,059 - fetcher - INFO - 获取到 0 张图片
+2026-02-08 13:04:10,060 - ComicHub - WARNING - 未找到图片: https://m.manhuagui.com/comic/1128/9776.html
+2026-02-08 13:04:10,980 - fetcher - INFO - 获取到 0 张图片
+2026-02-08 13:04:10,980 - ComicHub - WARNING - 未找到图片: https://m.manhuagui.com/comic/1128/9777.html
+2026-02-08 13:04:11,823 - fetcher - INFO - 获取到 0 张图片
+2026-02-08 13:04:11,824 - ComicHub - WARNING - 未找到图片: https://m.manhuagui.com/comic/1128/9778.html
+2026-02-08 13:04:12,677 - fetcher - INFO - 获取到 0 张图片
+2026-02-08 13:04:12,677 - ComicHub - WARNING - 未找到图片: https://m.manhuagui.com/comic/1128/9779.html
+2026-02-08 13:04:13,502 - fetcher - INFO - 获取到 0 张图片
+2026-02-08 13:04:13,502 - ComicHub - WARNING - 未找到图片: https://m.manhuagui.com/comic/1128/9780.html
+2026-02-08 13:04:14,379 - fetcher - INFO - 获取到 0 张图片
+2026-02-08 13:04:14,379 - ComicHub - WARNING - 未找到图片: https://m.manhuagui.com/comic/1128/9781.html
+2026-02-08 13:04:37,250 - fetcher - ERROR - 获取图片列表失败: ('Connection aborted.', RemoteDisconnected('Remote end closed connection without response'))
+2026-02-08 13:04:37,250 - ComicHub - WARNING - 未找到图片: https://m.manhuagui.com/comic/1128/9782.html
+2026-02-08 13:04:53,460 - fetcher - ERROR - 获取图片列表失败: HTTPSConnectionPool(host='m.manhuagui.com', port=443): Max retries exceeded with url: /comic/1128/9783.html (Caused by SSLError(SSLEOFError(8, 'EOF occurred in violation of protocol (_ssl.c:1129)')))
+2026-02-08 13:04:53,460 - ComicHub - WARNING - 未找到图片: https://m.manhuagui.com/comic/1128/9783.html
+2026-02-08 13:16:45,884 - fetcher - ERROR - 搜索漫画失败: HTTPSConnectionPool(host='m.manhuagui.com', port=443): Max retries exceeded with url: /s/%E6%B5%B7%E8%B4%BC%E7%8E%8B (Caused by SSLError(SSLEOFError(8, 'EOF occurred in violation of protocol (_ssl.c:1129)')))
+2026-02-08 13:40:00,526 - urllib3.connectionpool - WARNING - Retrying (Retry(total=2, connect=None, read=None, redirect=None, status=None)) after connection broken by 'SSLError(SSLEOFError(8, 'EOF occurred in violation of protocol (_ssl.c:1129)'))': /
+2026-02-08 13:40:16,915 - urllib3.connectionpool - WARNING - Retrying (Retry(total=1, connect=None, read=None, redirect=None, status=None)) after connection broken by 'SSLError(SSLEOFError(8, 'EOF occurred in violation of protocol (_ssl.c:1129)'))': /
+2026-02-08 13:40:33,030 - urllib3.connectionpool - WARNING - Retrying (Retry(total=0, connect=None, read=None, redirect=None, status=None)) after connection broken by 'SSLError(SSLEOFError(8, 'EOF occurred in violation of protocol (_ssl.c:1129)'))': /

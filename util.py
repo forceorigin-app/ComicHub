@@ -19,8 +19,9 @@ def setup_logging(config: dict) -> logging.Logger:
     Returns:
         Logger 对象
     """
-    level_str = config.get('Logging', {}).get('level', 'INFO')
-    log_file = config.get('Logging', {}).get('file', 'comichub.log')
+    logging_config = config.get('logging', {})
+    level_str = logging_config.get('level', 'INFO')
+    log_file = logging_config.get('file', 'comichub.log')
 
     # 映射日志级别
     level_map = {

@@ -22,7 +22,7 @@ class Database:
         Args:
             config: 数据库配置字典
         """
-        self.config = config['Database']
+        self.config = config.get('database', {})
         self.conn = None
         self.connect()
 
@@ -30,11 +30,11 @@ class Database:
         """建立数据库连接"""
         try:
             self.conn = psycopg2.connect(
-                host=self.config['host'],
-                port=self.config['port'],
-                database=self.config['database'],
-                user=self.config['user'],
-                password=self.config['password']
+                host=self.config.get('host', 'localhost'),
+                port=self.config.get('port', 5432),
+                database=self.config.get('database', 'postgres'),
+                user=self.config.get('user', 'postgres'),
+                password=self.config.get('password', 'postgres')
             )
             logger.info("数据库连接成功")
             self.init_tables()
