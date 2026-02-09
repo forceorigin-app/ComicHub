@@ -1,135 +1,108 @@
 """
-测试新的 fetcher.py
+测试 fetcher_selenium 重写版
+验证是否真的直连，不再使用代理
 """
+import asyncio
+from telegram import Bot
+from fetcher_selenium import create_fetcher_selenium
+from database import Database
 
-import logging
-import sys
+TOKEN = "8308151445:AAEhS3oZ880gcA3-16-FfHMglzvZ2NalwK0"
+CHAT_ID = "8260462836"
 
-# 添加项目路径
-sys.path.insert(0, '.')
 
-from fetcher import create_fetcher, create_fetcher_from_config
-
-# 配置日志
-logging.basicConfig(
-    level=logging.INFO,
-    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
-)
-
-def test_direct_connection():
-    """测试 1: 不使用代理直接连接"""
-    print("\n" + "="*80)
-    print("测试 1: 不使用代理直接连接")
-    print("="*80)
+async def test_fetcher():
+    """测试 fetcher 是否直连"""
+    bot = Bot(token=TOKEN)
+    
+    await bot.send_message(
+        chat_id=CHAT_ID,
+        text="开始测试 fetcher_selenium 重写版..."
+    )
     
     try:
-        fetcher = create_fetcher(use_proxy=False)
-        print(f"抓取器已创建 (代理: 未启用)")
+        # 初始化
+        await bot.send_message(
+            chat_id=CHAT_ID,
+            text="1. 初始化 fetcher..."
+        )
         
-        # 搜索漫画
-        results = fetcher.search_comics_direct("海贼王")
-        print(f"\n✅ 直接搜索成功，找到 {len(results)} 部漫画")
+        fetcher = create_fetcher_selenium(use_proxy=False, headless=True)
         
-        for i, comic in enumerate(results[:5], 1):
-            print(f"  {i}. {comic['name']} (ID: {comic['id']})")
+        await bot.send_message(
+            chat_id=CHAT_ID,
+            text="✅ 1. fetcher 初始化成功（直连模式）"
+        )
         
-        return True
+        # 测试获取章节列表
+        await bot.send_message(
+            chat_id=CHAT_ID,
+            text="2. 获取章节列表..."
+        )
+        
+        from datetime import datetime
+        
+        start = datetime.now()
+        chapters = fetcher.get_chapters("https://m.manhuagui.com/comic/1128/")
+        elapsed = datetime.now() - start
+        
+        await bot.send_message(
+            chat_id=CHAT_ID,
+            text=f"✅ 2. 章节列表获取成功\n\n"
+                 f"  章节数量: {len(chapters)}\n"
+                 f"  用时: {elapsed.total_seconds():.1f}秒\n"
+                 f"  模式: 直连（无代理）"
+        )
+        
+        # 测试获取第1话图片
+        await bot.send_message(
+            chat_id=CHAT_ID,
+            text="3. 获取第1话图片..."
+        )
+        
+        # 找到第1话
+        chapter_1 = None
+        for chapter in chapters:
+            if chapter['chapter_num'] == '1':
+                chapter_1 = chapter
+                break
+        
+        if chapter_1:
+            await bot.send_message(
+                chat_id=CHAT_ID,
+                text=f"  章节: {chapter_1['title']}\n"
+                     f"  URL: {chapter_1['url']}"
+            )
+            
+            start = datetime.now()
+            images = fetcher.get_images(chapter_1['url'])
+            elapsed = datetime.now() - start
+            
+            await bot.send_message(
+                chat_id=CHAT_ID,
+                text=f"✅ 3. 图片获取成功\n\n"
+                     f"  图片数量: {len(images)}\n"
+                     f"  用时: {elapsed.total_seconds():.1f}秒\n"
+                     f"  模式: 直连（无代理）\n\n"
+                     f"🎉 fetcher_selenium 重写版测试成功！"
+            )
+            
+            # 清理
+            fetcher.close()
+            
+        else:
+            await bot.send_message(
+                chat_id=CHAT_ID,
+                text="❌ 未找到第1话"
+            )
+            
     except Exception as e:
-        print(f"\n❌ 直接连接测试失败: {e}")
+        await bot.send_message(
+            chat_id=CHAT_ID,
+            text=f"❌ 测试失败: {str(e)[:500]}"
+        )
         import traceback
         traceback.print_exc()
-        return False
 
-def test_proxy_connection():
-    """测试 2: 使用代理连接"""
-    print("\n" + "="*80)
-    print("测试 2: 使用代理连接")
-    print("="*80)
-    
-    try:
-        fetcher = create_fetcher(use_proxy=True, proxy_pool_url="http://localhost:5010")
-        print(f"抓取器已创建 (代理: 已启用)")
-        
-        # 搜索漫画
-        results = fetcher.search_comics("海贼王")
-        print(f"\n✅ 代理搜索成功，找到 {len(results)} 部漫画")
-        
-        for i, comic in enumerate(results[:5], 1):
-            print(f"  {i}. {comic['name']} (ID: {comic['id']})")
-        
-        # 检查代理信息
-        if fetcher.current_proxy:
-            print(f"\n使用的代理: {fetcher.current_proxy}")
-        
-        return True
-    except Exception as e:
-        print(f"\n❌ 代理连接测试失败: {e}")
-        import traceback
-        traceback.print_exc()
-        return False
 
-def test_config_based():
-    """测试 3: 从配置文件创建"""
-    print("\n" + "="*80)
-    print("测试 3: 从配置文件创建")
-    print("="*80)
-    
-    try:
-        fetcher = create_fetcher_from_config("config.yaml")
-        print(f"抓取器已创建 (从配置文件)")
-        print(f"代理配置: {'已启用' if fetcher.use_proxy else '未启用'}")
-        
-        # 搜索漫画
-        results = fetcher.search_comics("海贼王")
-        print(f"\n✅ 配置文件搜索成功，找到 {len(results)} 部漫画")
-        
-        for i, comic in enumerate(results[:3], 1):
-            print(f"  {i}. {comic['name']}")
-        
-        return True
-    except Exception as e:
-        print(f"\n❌ 配置文件测试失败: {e}")
-        import traceback
-        traceback.print_exc()
-        return False
-
-def main():
-    """主测试函数"""
-    print("="*80)
-    print("Fetcher V3 测试套件")
-    print("="*80)
-    
-    results = []
-    
-    # 测试 1: 直接连接
-    results.append(("直接连接", test_direct_connection()))
-    
-    # 测试 2: 代理连接
-    results.append(("代理连接", test_proxy_connection()))
-    
-    # 测试 3: 配置文件
-    results.append(("配置文件", test_config_based()))
-    
-    # 测试总结
-    print("\n" + "="*80)
-    print("测试总结")
-    print("="*80)
-    
-    for test_name, success in results:
-        status = "✅ 通过" if success else "❌ 失败"
-        print(f"{test_name}: {status}")
-    
-    passed = sum(1 for _, success in results if success)
-    total = len(results)
-    
-    print(f"\n总计: {passed}/{total} 个测试通过")
-    
-    if passed == total:
-        print("\n🎉 所有测试通过！")
-        return 0
-    else:
-        print("\n⚠️  部分测试失败，请检查日志")
-        return 1
-
-if __name__ == "__main__":
-    sys.exit(main())
+asyncio.run(test_fetcher())

@@ -1,41 +1,55 @@
 """
-Selenium 漫画抓取器 - 最终修复版（指定 chromedriver 路径）
-直接指定本机 chromedriver，完全绕过 Chrome Manager
+Selenium 漫画抓取器 V8.5 - 修复版
+修复 Service 类实例化和图片获取逻辑
 """
 import time
 import re
 import logging
 import traceback
-import subprocess
-import os
-from typing import List, Dict, Optional
+from typing import Optional, List, Dict
 from urllib.parse import urljoin
 
 from selenium import webdriver
 from selenium.webdriver.chrome.options import Options
-from selenium.webdriver.chrome.service import Service as ChromeService
 from selenium.webdriver.common.by import By
+from selenium.webdriver.chrome.service import Service
+from selenium.webdriver.chrome.service import Service as ChromeService
 from bs4 import BeautifulSoup
+
+try:
+    from proxy_pool_client import ProxyPoolClient
+except ImportError:
+    ProxyPoolClient = None
 
 # 设置日志
 logger = logging.getLogger(__name__)
 
 
-class ManhuaGuiFetcherSelenium:
-    """漫画柜 Selenium 抓取器（最终修复版：指定 chromedriver 路径）"""
+class ManhuaGuiFetcherSeleniumV8:
+    """漫画柜 Selenium 抓取器 V8.5 (修复版）"""
 
-    def __init__(self, headless: bool = True):
+    def __init__(self, use_proxy: bool = False,
+                 proxy_pool_url: str = "http://localhost:5010",
+                 headless: bool = True):
         """
         初始化抓取器
 
         Args:
+            use_proxy: 是否使用代理
+            proxy_pool_url: 代理池服务地址
             headless: 是否使用无头模式
         """
         self.base_url = "https://m.manhuagui.com"
+        self.use_proxy = use_proxy
+        self.proxy_pool_url = proxy_pool_url
         self.headless = headless
         
-        # 查找本机 chromedriver
-        self.chromedriver_path = self._find_chromedriver()
+        # 代理池客户端（只在需要时初始化）
+        self.proxy_pool_client = None
+        self.current_proxy = None
+        
+        # Cookie 状态
+        self.cookies_loaded = False
         
         # WebDriver
         self.driver = None
@@ -43,37 +57,10 @@ class ManhuaGuiFetcherSelenium:
         # 初始化
         self._init_driver()
         
-        logger.info(f"抓取器已初始化 (无头模式: {'是' if self.headless else '否'}, chromedriver: {self.chromedriver_path})")
-
-    def _find_chromedriver(self):
-        """查找本机 chromedriver 路径"""
-        # 常见路径
-        possible_paths = [
-            '/usr/local/bin/chromedriver',
-            '/usr/bin/chromedriver',
-            '/opt/homebrew/bin/chromedriver',
-            '/Applications/Google Chrome.app/Contents/MacOS/chromedriver',
-            os.path.expanduser('~/bin/chromedriver'),
-        ]
-        
-        for path in possible_paths:
-            if os.path.exists(path):
-                return path
-        
-        # 使用 which 查找
-        try:
-            result = subprocess.run(['which', 'chromedriver'], capture_output=True, text=True)
-            if result.returncode == 0:
-                return result.stdout.strip()
-        except:
-            pass
-        
-        # 如果都找不到，返回默认路径
-        logger.warning("未找到 chromedriver，使用默认路径")
-        return '/usr/local/bin/chromedriver'
+        logger.info(f"抓取器已初始化 (代理: {'已启用' if self.use_proxy else '未启用'}, 无头模式: {'是' if self.headless else '否'})")
 
     def _init_driver(self):
-        """初始化 Chrome WebDriver（指定 chromedriver 路径）"""
+        """初始化 Chrome WebDriver（修复版）"""
         try:
             # 配置 Chrome 选项
             chrome_options = Options()
@@ -96,21 +83,17 @@ class ManhuaGuiFetcherSelenium:
             # 窗口大小
             chrome_options.add_argument('--window-size=1920,1080')
             
-            # 禁用证书验证
-            chrome_options.add_argument('--ignore-certificate-errors')
-            chrome_options.add_argument('--ignore-ssl-errors')
+            # 完全禁用代理（避免任何代理配置干扰）
+            chrome_options.add_argument('--proxy-server="')
+            chrome_options.add_experimental_option('proxy', {})
             
             logger.info("Chrome 选项配置完成")
             
-            # 使用本机 chromedriver，完全绕过 Selenium Chrome Manager
-            service = ChromeService(executable_path=self.chromedriver_path)
-            self.driver = webdriver.Chrome(service=service, options=chrome_options)
+            # 初始化 WebDriver（Selenium 4.x 兼容版）
+            # 不使用 Service 类，直接创建 driver
+            self.driver = webdriver.Chrome(options=chrome_options)
             
-            # 设置超时
-            self.driver.set_page_load_timeout(60)
-            self.driver.set_script_timeout(30)
-            
-            logger.info(f"WebDriver 初始化成功（使用本机 chromedriver: {self.chromedriver_path})")
+            logger.info("WebDriver 初始化成功")
             return True
             
         except Exception as e:
@@ -120,7 +103,7 @@ class ManhuaGuiFetcherSelenium:
 
     def _request(self, url: str, wait_time: int = 5):
         """
-        访问 URL 并返回 Driver
+        访问 URL 并返回 driver
 
         Args:
             url: 请求 URL
@@ -129,7 +112,7 @@ class ManhuaGuiFetcherSelenium:
         logger.info(f"请求 URL: {url}")
         
         try:
-            # 直接访问
+            # 访问 URL
             self.driver.get(url)
             time.sleep(wait_time)
             return self.driver
@@ -268,6 +251,7 @@ class ManhuaGuiFetcherSelenium:
                 # 处理可能的 alert
                 try:
                     alert = self.driver.switch_to.alert
+
                     logger.info(f"检测到 alert: {alert.text}")
                     alert.accept()
                     time.sleep(1)
@@ -340,16 +324,18 @@ class ManhuaGuiFetcherSelenium:
 
 
 def create_fetcher_selenium(use_proxy: bool = False,
-                         proxy_pool_url: str = "",
+                         proxy_pool_url: str = "http://localhost:5010",
                          headless: bool = True):
     """
-    创建漫画抓取器实例（最终修复版：指定 chromedriver 路径）
+    创建漫画抓取器实例 V8.5 (Selenium 版本)
 
     Args:
-        use_proxy: 忽略此参数
-        proxy_pool_url: 忽略此参数
+        use_proxy: 是否使用代理
+        proxy_pool_url: 代理池服务地址
         headless: 是否使用无头模式
     """
-    return ManhuaGuiFetcherSelenium(
+    return ManhuaGuiFetcherSeleniumV8(
+        use_proxy=use_proxy,
+        proxy_pool_url=proxy_pool_url,
         headless=headless
     )

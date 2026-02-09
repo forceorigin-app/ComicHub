@@ -1,19 +1,15 @@
 """
-Selenium 漫画抓取器 - 最终修复版（指定 chromedriver 路径）
-直接指定本机 chromedriver，完全绕过 Chrome Manager
+Selenium 漫画抓取器 V8.6 - 最终修复版
+完全移除代理逻辑，确保直连模式
 """
 import time
 import re
 import logging
-import traceback
-import subprocess
-import os
-from typing import List, Dict, Optional
+from typing import Optional, List, Dict
 from urllib.parse import urljoin
 
 from selenium import webdriver
 from selenium.webdriver.chrome.options import Options
-from selenium.webdriver.chrome.service import Service as ChromeService
 from selenium.webdriver.common.by import By
 from bs4 import BeautifulSoup
 
@@ -22,20 +18,25 @@ logger = logging.getLogger(__name__)
 
 
 class ManhuaGuiFetcherSelenium:
-    """漫画柜 Selenium 抓取器（最终修复版：指定 chromedriver 路径）"""
+    """漫画柜 Selenium 抓取器（最终修复版）"""
 
-    def __init__(self, headless: bool = True):
+    def __init__(self, use_proxy: bool = False,
+                 proxy_pool_url: str = "",
+                 headless: bool = True):
         """
         初始化抓取器
 
         Args:
+            use_proxy: 忽略此参数，始终使用直连
+            proxy_pool_url: 忽略此参数，不使用代理
             headless: 是否使用无头模式
         """
         self.base_url = "https://m.manhuagui.com"
         self.headless = headless
         
-        # 查找本机 chromedriver
-        self.chromedriver_path = self._find_chromedriver()
+        # 完全忽略代理配置
+        self.use_proxy = False
+        self.proxy_pool_url = None
         
         # WebDriver
         self.driver = None
@@ -43,37 +44,10 @@ class ManhuaGuiFetcherSelenium:
         # 初始化
         self._init_driver()
         
-        logger.info(f"抓取器已初始化 (无头模式: {'是' if self.headless else '否'}, chromedriver: {self.chromedriver_path})")
-
-    def _find_chromedriver(self):
-        """查找本机 chromedriver 路径"""
-        # 常见路径
-        possible_paths = [
-            '/usr/local/bin/chromedriver',
-            '/usr/bin/chromedriver',
-            '/opt/homebrew/bin/chromedriver',
-            '/Applications/Google Chrome.app/Contents/MacOS/chromedriver',
-            os.path.expanduser('~/bin/chromedriver'),
-        ]
-        
-        for path in possible_paths:
-            if os.path.exists(path):
-                return path
-        
-        # 使用 which 查找
-        try:
-            result = subprocess.run(['which', 'chromedriver'], capture_output=True, text=True)
-            if result.returncode == 0:
-                return result.stdout.strip()
-        except:
-            pass
-        
-        # 如果都找不到，返回默认路径
-        logger.warning("未找到 chromedriver，使用默认路径")
-        return '/usr/local/bin/chromedriver'
+        logger.info(f"抓取器已初始化 (直连模式, 无头模式: {'是' if self.headless else '否'})")
 
     def _init_driver(self):
-        """初始化 Chrome WebDriver（指定 chromedriver 路径）"""
+        """初始化 Chrome WebDriver（直连模式）"""
         try:
             # 配置 Chrome 选项
             chrome_options = Options()
@@ -96,25 +70,21 @@ class ManhuaGuiFetcherSelenium:
             # 窗口大小
             chrome_options.add_argument('--window-size=1920,1080')
             
-            # 禁用证书验证
-            chrome_options.add_argument('--ignore-certificate-errors')
-            chrome_options.add_argument('--ignore-ssl-errors')
+            # 完全禁用代理
+            chrome_options.add_argument('--proxy-server="')
+            chrome_options.add_experimental_option('proxy', {})
             
-            logger.info("Chrome 选项配置完成")
+            logger.info("Chrome 选项配置完成（直连模式）")
             
-            # 使用本机 chromedriver，完全绕过 Selenium Chrome Manager
-            service = ChromeService(executable_path=self.chromedriver_path)
-            self.driver = webdriver.Chrome(service=service, options=chrome_options)
+            # 初始化 WebDriver
+            self.driver = webdriver.Chrome(options=chrome_options)
             
-            # 设置超时
-            self.driver.set_page_load_timeout(60)
-            self.driver.set_script_timeout(30)
-            
-            logger.info(f"WebDriver 初始化成功（使用本机 chromedriver: {self.chromedriver_path})")
+            logger.info("WebDriver 初始化成功（直连模式）")
             return True
             
         except Exception as e:
             logger.error(f"WebDriver 初始化失败: {e}")
+            import traceback
             traceback.print_exc()
             return False
 
@@ -129,7 +99,7 @@ class ManhuaGuiFetcherSelenium:
         logger.info(f"请求 URL: {url}")
         
         try:
-            # 直接访问
+            # 直接访问，不使用任何代理
             self.driver.get(url)
             time.sleep(wait_time)
             return self.driver
@@ -328,6 +298,7 @@ class ManhuaGuiFetcherSelenium:
 
         except Exception as e:
             logger.error(f"获取图片失败: {e}")
+            import traceback
             traceback.print_exc()
             return all_images
 
@@ -343,7 +314,7 @@ def create_fetcher_selenium(use_proxy: bool = False,
                          proxy_pool_url: str = "",
                          headless: bool = True):
     """
-    创建漫画抓取器实例（最终修复版：指定 chromedriver 路径）
+    创建漫画抓取器实例 (Selenium 版本)
 
     Args:
         use_proxy: 忽略此参数
@@ -351,5 +322,7 @@ def create_fetcher_selenium(use_proxy: bool = False,
         headless: 是否使用无头模式
     """
     return ManhuaGuiFetcherSelenium(
+        use_proxy=False,  # 始终使用直连
+        proxy_pool_url="",  # 不使用代理
         headless=headless
     )
