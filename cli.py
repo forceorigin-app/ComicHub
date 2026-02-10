@@ -13,11 +13,11 @@ from pathlib import Path
 from typing import Optional, List
 import click
 
-from config_loader import get_config
-from database import Database
-from fetcher_selenium import ManhuaGuiFetcherSelenium
-from batch_download import BatchDownloader
-from info_txt_generator import InfoTxtGenerator
+from comichub.core.config import get_config
+from comichub.core.database import Database
+from comichub.core.fetcher import ManhuaGuiFetcherSelenium
+from comichub.downloader.batch import BatchDownloader
+from comichub.utils.info import InfoTxtGenerator
 
 # 配置日志
 logging.basicConfig(

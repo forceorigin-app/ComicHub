@@ -11,9 +11,9 @@ from typing import List, Dict, Optional
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from tqdm import tqdm
 
-from config_loader import get_config
-from database import Database
-from fetcher_selenium import ManhuaGuiFetcherSelenium
+from comichub.core.config import get_config
+from comichub.core.database import Database
+from comichub.core.fetcher import ManhuaGuiFetcherSelenium
 
 logger = logging.getLogger(__name__)
 

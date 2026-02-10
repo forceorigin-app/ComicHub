@@ -8,7 +8,7 @@ import time
 from pathlib import Path
 from typing import Dict, List, Optional
 
-from database import Database
+from comichub.core.database import Database
 
 logger = logging.getLogger(__name__)
 

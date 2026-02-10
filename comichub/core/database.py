@@ -10,7 +10,7 @@ import json
 import logging
 from pathlib import Path
 
-from config_loader import get_config
+from comichub.core.config import get_config
 
 logger = logging.getLogger(__name__)
 
