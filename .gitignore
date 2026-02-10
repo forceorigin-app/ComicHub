@@ -1,6 +1,5 @@
 # Python
 __pycache__/
-**/__pycache__/
 *.py[cod]
 *$py.class
 *.so
@@ -10,9 +9,8 @@ develop-eggs/
 dist/
 downloads/
 eggs/
-.eggs/
-lib/
-lib64/
+.eggs-info/
+lib64/lib/
 parts/
 sdist/
 var/
@@ -23,28 +21,32 @@ wheels/
 
 # Virtual Environment
 .venv/
-venv/
-ENV/
 env/
+ENV/
+.venv/
 
-# IDE
+# Environment
+.env
+.venv
+.env.local
+.env.*.local
+
+# IDEs
 .vscode/
 .idea/
 *.swp
 *.swo
 *~
 
-# OS
-.DS_Store
-Thumbs.db
-
 # Logs
 *.log
 comichub.log
+selenium_test_output.txt
 
-# Downloads
+# Project Specific
 downloads/
+memory/
 
-# Test outputs
-*.txt
-test_*_output.txt
+# OS
+.DS_Store
+Thumbs.db
