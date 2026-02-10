@@ -37,7 +37,7 @@ async def download_chapter(chapter_num: str):
         )
         
         # 初始化
-        fetcher = ManhuaGuiFetcherSelenium(headless=True, use_proxy=False)
+        fetcher = ManhuaGuiFetcherSelenium(headless=True)
         
         # 获取章节列表
         chapters = fetcher.get_chapters(COMIC_URL)
