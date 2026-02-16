@@ -261,7 +261,7 @@ class ManhuaGuiFetcherSelenium:
 
         all_images = []
         page_num = 0
-        max_pages = 30
+        max_pages = 1000  # 设置一个很高的上限，实际由页面指示器控制
 
         try:
             while page_num < max_pages:
