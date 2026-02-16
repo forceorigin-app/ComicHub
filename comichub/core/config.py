@@ -107,6 +107,76 @@ class Config:
         """
         return self.config.get('logging', {})
 
+    def get_progress_log_path(self) -> Path:
+        """
+        获取进度日志文件路径
+
+        Returns:
+            进度日志文件路径
+        """
+        log_config = self.get_logging_config()
+        filename = log_config.get('progress_file', 'download_progress.log')
+        return Path(filename)
+
+    def get_telegram_config(self) -> Dict[str, Any]:
+        """
+        获取 Telegram 配置
+
+        Returns:
+            Telegram 配置字典
+        """
+        return self.config.get('telegram', {})
+
+    def is_telegram_enabled(self) -> bool:
+        """
+        检查是否启用 Telegram 通知
+
+        Returns:
+            是否启用 Telegram 通知
+        """
+        telegram_config = self.get_telegram_config()
+        return telegram_config.get('enabled', False)
+
+    def get_telegram_bot_token(self) -> str:
+        """
+        获取 Telegram Bot Token
+
+        Returns:
+            Telegram Bot Token
+        """
+        telegram_config = self.get_telegram_config()
+        return telegram_config.get('bot_token', '')
+
+    def get_telegram_chat_id(self) -> str:
+        """
+        获取 Telegram Chat ID
+
+        Returns:
+            Telegram Chat ID
+        """
+        telegram_config = self.get_telegram_config()
+        return telegram_config.get('chat_id', '')
+
+    def get_telegram_report_interval(self) -> int:
+        """
+        获取 Telegram 进度报告间隔（分钟）
+
+        Returns:
+            报告间隔（分钟）
+        """
+        telegram_config = self.get_telegram_config()
+        return telegram_config.get('report_interval', 30)
+
+    def get_telegram_report_chapter_interval(self) -> int:
+        """
+        获取 Telegram 进度报告间隔（章数）
+
+        Returns:
+            报告间隔（章数）
+        """
+        telegram_config = self.get_telegram_config()
+        return telegram_config.get('report_chapter_interval', 5)
+
     def get_proxy_config(self) -> Dict[str, Any]:
         """
         获取代理配置

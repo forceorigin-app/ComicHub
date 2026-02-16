@@ -52,7 +52,7 @@ class BatchDownloader:
         logger.info("批量下载器初始化成功")
 
     def download_comic(self, comic_url: str, start_chapter: Optional[int] = None,
-                       end_chapter: Optional[int] = None) -> Dict:
+                       end_chapter: Optional[int] = None, reverse_chapters: bool = False) -> Dict:
         """
         下载整部漫画
 
@@ -60,6 +60,7 @@ class BatchDownloader:
             comic_url: 漫画URL
             start_chapter: 起始章节号（可选）
             end_chapter: 结束章节号（可选）
+            reverse_chapters: 是否反转章节顺序（从第一章开始）
 
         Returns:
             下载统计信息
@@ -110,6 +111,11 @@ class BatchDownloader:
             if not chapters:
                 logger.error(f"无法获取章节列表: {comic_url}")
                 return stats
+
+            # 反转章节顺序（从第一章开始）
+            if reverse_chapters:
+                chapters.reverse()
+                logger.info("章节顺序已反转，从第一章开始下载")
 
             stats['total_chapters'] = len(chapters)
 

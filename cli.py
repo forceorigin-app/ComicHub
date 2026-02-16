@@ -9,9 +9,12 @@ ComicHub CLI - 主入口程序
 
 import sys
 import logging
+import time
+import re
 from pathlib import Path
 from typing import Optional, List
 import click
+import requests
 
 from comichub.core.config import get_config
 from comichub.core.database import Database
@@ -27,6 +30,43 @@ logging.basicConfig(
 logger = logging.getLogger(__name__)
 
 
+# Telegram 通知和进度日志辅助函数
+def send_telegram_message(bot_token: str, chat_id: str, text: str) -> bool:
+    """
+    发送 Telegram 消息
+
+    Args:
+        bot_token: Telegram Bot Token
+        chat_id: Telegram Chat ID
+        text: 消息内容
+
+    Returns:
+        是否发送成功
+    """
+    try:
+        url = f"https://api.telegram.org/bot{bot_token}/sendMessage"
+        response = requests.post(url, json={'chat_id': chat_id, 'text': text}, timeout=10)
+        return response.status_code == 200
+    except Exception as e:
+        logger.warning(f"发送 Telegram 消息失败: {e}")
+        return False
+
+
+def log_progress(log_path: Path, msg: str):
+    """
+    写入进度日志
+
+    Args:
+        log_path: 日志文件路径
+        msg: 日志消息
+    """
+    try:
+        with open(log_path, 'a', encoding='utf-8') as f:
+            f.write(f"{time.strftime('%Y-%m-%d %H:%M:%S')} - {msg}\n")
+    except Exception as e:
+        logger.warning(f"写入进度日志失败: {e}")
+
+
 class ComicHubCLI:
     """ComicHub 命令行接口"""
 
@@ -40,6 +80,16 @@ class ComicHubCLI:
         self.config_loader = get_config(config_path)
         self.save_path = self.config_loader.get_save_path()
 
+        # Telegram 配置
+        self.telegram_enabled = self.config_loader.is_telegram_enabled()
+        self.telegram_bot_token = self.config_loader.get_telegram_bot_token()
+        self.telegram_chat_id = self.config_loader.get_telegram_chat_id()
+        self.telegram_report_interval = self.config_loader.get_telegram_report_interval() * 60  # 转为秒
+        self.telegram_report_chapter_interval = self.config_loader.get_telegram_report_chapter_interval()
+
+        # 进度日志
+        self.progress_log_path = self.config_loader.get_progress_log_path()
+
         # 初始化数据库
         try:
             self.db = Database(config_path)
@@ -50,6 +100,15 @@ class ComicHubCLI:
 
         # 初始化抓取器
         self.fetcher = ManhuaGuiFetcherSelenium(headless=True)
+
+    def send_notification(self, text: str):
+        """发送 Telegram 通知（如果启用）"""
+        if self.telegram_enabled and self.telegram_bot_token and self.telegram_chat_id:
+            send_telegram_message(self.telegram_bot_token, self.telegram_chat_id, text)
+
+    def log_progress(self, msg: str):
+        """写入进度日志"""
+        log_progress(self.progress_log_path, msg)
 
     def search_and_fetch(self, keyword: str, limit: int = 1,
                         start_chapter: Optional[int] = None,
@@ -115,7 +174,8 @@ class ComicHubCLI:
 
     def fetch_comic_by_url(self, comic_url: str,
                           start_chapter: Optional[int] = None,
-                          end_chapter: Optional[int] = None) -> dict:
+                          end_chapter: Optional[int] = None,
+                          reverse_chapters: bool = False) -> dict:
         """
         模式 2: 指定 URL 抓取模式
 
@@ -123,19 +183,32 @@ class ComicHubCLI:
             comic_url: 漫画 URL
             start_chapter: 起始章节号
             end_chapter: 结束章节号
+            reverse_chapters: 是否反转章节顺序（从第一章开始）
 
         Returns:
             抓取统计信息
         """
         logger.info(f"抓取漫画: {comic_url}")
+        log_msg = f"开始下载: {comic_url}"
+        if reverse_chapters:
+            log_msg += " (从第一章开始)"
+        self.log_progress(log_msg)
 
         try:
             downloader = BatchDownloader()
-            stats = downloader.download_comic(comic_url, start_chapter, end_chapter)
+            stats = downloader.download_comic(comic_url, start_chapter, end_chapter, reverse_chapters)
             downloader.close()
+
+            # 记录完成日志
+            log_msg = f"下载完成: {stats['comic_name']} - 章节: {stats['downloaded_chapters']}/{stats['total_chapters']}, 图片: {stats['downloaded_images']}/{stats['total_images']}"
+            self.log_progress(log_msg)
+            self.send_notification(f"✅ {log_msg}")
+
             return stats
         except Exception as e:
             logger.error(f"抓取漫画失败: {e}")
+            self.log_progress(f"下载失败: {e}")
+            self.send_notification(f"❌ 下载失败: {e}")
             import traceback
             traceback.print_exc()
             return {
@@ -308,19 +381,22 @@ def search(keyword: str, limit: int, start_chapter: Optional[int], end_chapter: 
 @click.option('--url', '-u', required=True, help='漫画 URL')
 @click.option('--start-chapter', '-s', type=int, help='起始章节号')
 @click.option('--end-chapter', '-e', type=int, help='结束章节号')
-def url(url: str, start_chapter: Optional[int], end_chapter: Optional[int]):
+@click.option('--all', '-a', is_flag=True, help='下载所有章节（从第一章开始）')
+def url(url: str, start_chapter: Optional[int], end_chapter: Optional[int], all: bool):
     """模式 2: 指定 URL 抓取"""
     print(f"\n{'='*60}")
     print("模式 2: 指定 URL 抓取")
     print(f"{'='*60}")
     print(f"URL: {url}")
-    if start_chapter or end_chapter:
+    if all:
+        print(f"下载模式: 所有章节（从第一章开始）")
+    elif start_chapter or end_chapter:
         print(f"章节范围: {start_chapter or '开始'} - {end_chapter or '结束'}")
     print()
 
     app = ComicHubCLI()
     try:
-        stats = app.fetch_comic_by_url(url, start_chapter, end_chapter)
+        stats = app.fetch_comic_by_url(url, start_chapter, end_chapter, reverse_chapters=all)
 
         print(f"\n{'='*60}")
         print("抓取完成")

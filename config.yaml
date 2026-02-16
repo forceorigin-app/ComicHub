@@ -20,6 +20,15 @@ fetch:
 logging:
   level: INFO  # DEBUG, INFO, WARNING, ERROR
   file: comichub.log
+  progress_file: download_progress.log  # 下载进度日志
+
+# Telegram 通知配置
+telegram:
+  enabled: false  # 是否启用 Telegram 通知
+  bot_token: ""  # Telegram Bot Token
+  chat_id: ""  # Telegram Chat ID
+  report_interval: 30  # 进度报告间隔（分钟）
+  report_chapter_interval: 5  # 进度报告间隔（章数）
 
 # 代理池服务配置
 proxy_pool_service:
