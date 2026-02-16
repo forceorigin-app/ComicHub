@@ -288,6 +288,11 @@ class BatchDownloader:
         Returns:
             是否成功
         """
+        # 检查文件是否已存在且有内容（避免重复下载）
+        if save_path.exists() and save_path.stat().st_size > 0:
+            logger.debug(f"文件已存在，跳过下载: {save_path.name}")
+            return True
+
         for attempt in range(self.retry):
             try:
                 headers = {

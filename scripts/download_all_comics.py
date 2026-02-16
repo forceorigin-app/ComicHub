@@ -105,15 +105,8 @@ def run_download(book_url: str):
             # Clean filename
             ch_title_clean = re.sub(r'[\\/:*?"<>|]', '', ch_title)
             ch_path = SAVE_DIR / book_name / ch_title_clean
-            
-            # Check existence (Resume)
-            if ch_path.exists() and list(ch_path.glob('*')):
-                msg = f"⏭ 跳过: [{count}/{total}] {ch_title} (已存在)"
-                print(msg)
-                log_progress(msg)
-                continue
-            
-            # Download
+
+            # Download (image-level skip will handle existing files)
             msg = f"⬇️ 下载中: [{count}/{total}] {ch_title}"
             print(msg)
             log_progress(msg)
@@ -140,14 +133,19 @@ def run_download(book_url: str):
                 for img_url in images:
                     if img_url.startswith('//'):
                         img_url = 'https:' + img_url
-                    
+
                     ext = '.webp'
                     if 'jpg' in img_url.lower(): ext = '.jpg'
                     elif 'png' in img_url.lower(): ext = '.png'
-                    
+
                     fname = f"{img_count+1:03}{ext}"
                     fpath = ch_path / fname
-                    
+
+                    # Skip if file already exists and has content
+                    if fpath.exists() and fpath.stat().st_size > 0:
+                        img_count += 1
+                        continue
+
                     try:
                         r = requests.get(img_url, headers=headers, stream=True, timeout=15)
                         if r.status_code == 200:
