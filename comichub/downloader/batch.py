@@ -190,16 +190,19 @@ class BatchDownloader:
         }
 
         try:
-            # 获取图片列表
-            images = self.fetcher.get_images(chapter_url)
+            # 获取图片列表和总数
+            result = self.fetcher.get_images(chapter_url)
+            images = result['images']
+            total_count = result['total_count']
+
             if not images:
                 logger.warning(f"无法获取图片列表: {chapter_url}")
                 return stats
 
-            stats['total_images'] = len(images)
+            stats['total_images'] = total_count
 
-            # 创建章节目录
-            chapter_dir_name = f"第{chapter_num}话"
+            # 创建章节目录（使用章节标题）
+            chapter_dir_name = self._sanitize_filename(chapter_title)
             chapter_dir = comic_dir / chapter_dir_name
             chapter_dir.mkdir(parents=True, exist_ok=True)
 
@@ -212,7 +215,7 @@ class BatchDownloader:
                         chapter_num=chapter_num,
                         title=chapter_title,
                         url=chapter_url,
-                        page_count=len(images)
+                        page_count=total_count
                     )
                 except Exception as e:
                     logger.warning(f"保存章节信息到数据库失败: {e}")
@@ -221,19 +224,27 @@ class BatchDownloader:
             downloaded_count = 0
             failed_count = 0
 
+            # 计算补零位数（基于总页数）
+            zero_pad_width = len(str(total_count))
+
             with ThreadPoolExecutor(max_workers=self.concurrent_downloads) as executor:
                 futures = {}
-                for i, img_url in enumerate(images, 1):
-                    filename = f"{i:03d}.jpg"
+                for img_info in images:
+                    # img_info 现在是字典格式 {'url': str, 'page': int}
+                    img_url = img_info['url']
+                    page_num = img_info['page']
+
+                    # 使用页码作为文件名，根据总页数补零
+                    filename = f"{page_num:0{zero_pad_width}d}.jpg"
                     save_path = chapter_dir / filename
 
                     future = executor.submit(self._download_image, img_url, save_path)
-                    futures[future] = (i, filename)
+                    futures[future] = (page_num, filename)
 
                 # 等待完成
                 for future in tqdm(as_completed(futures), total=len(futures),
                                  desc=f"下载 {chapter_dir_name}", unit="张"):
-                    i, filename = futures[future]
+                    page_num, filename = futures[future]
                     try:
                         success = future.result()
                         if success:

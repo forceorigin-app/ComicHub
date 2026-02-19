@@ -250,18 +250,30 @@ class ManhuaGuiFetcherSelenium:
         logger.info(f"获取到 {len(chapters)} 个章节")
         return chapters
 
-    def get_images(self, chapter_url: str) -> List[str]:
-        """获取章节图片列表（支持翻页）"""
+    def get_images(self, chapter_url: str) -> Dict[str, any]:
+        """
+        获取章节图片列表（支持翻页）
+
+        Args:
+            chapter_url: 章节URL
+
+        Returns:
+            {
+                'images': List[Dict],  # 图片信息列表，每项包含 {'url': str, 'page': int}
+                'total_count': int,    # 总图片数
+            }
+        """
         logger.info(f"获取章节图片: {chapter_url}")
 
         # 请求
         driver = self._request(chapter_url, wait_time=5)
         if not driver:
-            return []
+            return {'images': [], 'total_count': 0}
 
-        all_images = []
+        all_images = []  # List[Dict] 存储 {'url': str, 'page': int}
         page_num = 0
         max_pages = 1000  # 设置一个很高的上限，实际由页面指示器控制
+        total_images_from_indicator = None  # 从页面指示器获取的总图片数
 
         try:
             while page_num < max_pages:
@@ -277,30 +289,59 @@ class ManhuaGuiFetcherSelenium:
 
                 # 获取当前页面的图片
                 soup = BeautifulSoup(driver.page_source, 'html.parser')
+
+                # 从当前 URL 中提取页码（如果有的话）
+                current_url = driver.current_url
+                current_page_num = self._extract_page_number_from_url(current_url)
+
                 for img in soup.find_all('img'):
                     src = img.get('src') or img.get('data-src') or img.get('data-original')
                     if src and ('jpg' in src or 'png' in src or 'jpeg' in src or 'webp' in src):
                         # 过滤掉无关图片
                         if not any(x in src.lower() for x in ['logo', 'icon', 'banner', 'ad', 'avatar']):
-                            if src not in all_images:
-                                all_images.append(src)
+                            # 检查是否已存在（去重）
+                            if not any(img_info['url'] == src for img_info in all_images):
+                                # 使用当前 URL 中的页码，如果没有则使用列表长度+1
+                                if current_page_num is not None:
+                                    page_number = current_page_num
+                                else:
+                                    page_number = len(all_images) + 1
+
+                                all_images.append({
+                                    'url': src,
+                                    'page': page_number
+                                })
 
                 logger.info(f"第 {page_num + 1} 页: 已收集 {len(all_images)} 张图片")
 
                 # 检查页面指示
                 try:
-                    page_indicator = driver.find_element(By.CSS_SELECTOR, '#pageNo')
+                    # 优先使用 span.manga-page（包含完整信息如 "1/184P"）
+                    # 回退到 #pageNo（只显示当前页码 "1"）
+                    page_indicator = None
+                    try:
+                        page_indicator = driver.find_element(By.CSS_SELECTOR, 'span.manga-page')
+                    except:
+                        page_indicator = driver.find_element(By.CSS_SELECTOR, '#pageNo')
+
                     page_text = page_indicator.text
                     logger.info(f"页面指示: {page_text}")
 
-                    # 解析 "1/13P" 格式
-                    match = page_text.split('/')
-                    if match:
-                        current = match[0].strip()
-                        total = match[1].rstrip('P').strip()
-                        if current == total:
-                            logger.info(f"已到最后一页: {page_text}")
-                            break
+                    # 解析 "1/184P" 格式
+                    if '/' in page_text:
+                        match = page_text.split('/')
+                        if match:
+                            current = match[0].strip()
+                            total = match[1].rstrip('P').strip()
+
+                            # 第一页就提取总图片数
+                            if page_num == 0 and total.isdigit():
+                                total_images_from_indicator = int(total)
+                                logger.info(f"从页面指示器获取总图片数: {total_images_from_indicator}")
+
+                            if current == total:
+                                logger.info(f"已到最后一页: {page_text}")
+                                break
                 except:
                     pass  # 没有找到页面指示器
 
@@ -323,13 +364,103 @@ class ManhuaGuiFetcherSelenium:
                     logger.info(f"点击下一页失败: {e}")
                     break
 
-            logger.info(f"最终获取到 {len(all_images)} 张图片")
-            return all_images
+            # 使用页面指示器的总数，如果没有则使用实际获取的数量
+            final_count = total_images_from_indicator if total_images_from_indicator is not None else len(all_images)
+            logger.info(f"最终获取到 {len(all_images)} 张图片，总数: {final_count}")
+
+            return {
+                'images': all_images,
+                'total_count': final_count
+            }
 
         except Exception as e:
             logger.error(f"获取图片失败: {e}")
             traceback.print_exc()
-            return all_images
+            return {
+                'images': all_images,
+                'total_count': len(all_images)
+            }
+
+    def _extract_page_number_from_url(self, url: str) -> Optional[int]:
+        """
+        从 URL 中提取页码
+        例如: https://m.manhuagui.com/comic/1128/9771.html#p=2 -> 2
+
+        Args:
+            url: 章节页面 URL
+
+        Returns:
+            页码，如果无法提取则返回 None
+        """
+        try:
+            # 查找 #p= 数字 格式
+            match = re.search(r'#p=(\d+)', url)
+            if match:
+                return int(match.group(1))
+
+            # 尝试其他可能的格式，例如 ?p=2
+            match = re.search(r'[?&]p=(\d+)', url)
+            if match:
+                return int(match.group(1))
+
+        except Exception as e:
+            logger.debug(f"从 URL 提取页码失败: {url}, 错误: {e}")
+
+        return None
+
+    def get_image_count(self, chapter_url: str) -> int:
+        """
+        快速获取章节图片数量（只访问第一页，读取页面指示器）
+
+        Args:
+            chapter_url: 章节URL
+
+        Returns:
+            图片数量，如果获取失败返回 0
+        """
+        logger.info(f"快速获取图片数量: {chapter_url}")
+
+        driver = self._request(chapter_url, wait_time=3)
+        if not driver:
+            logger.warning("无法获取页面，返回0")
+            return 0
+
+        try:
+            # 优先使用 span.manga-page（包含完整信息如 "1/184P"）
+            # 回退到 #pageNo（只显示当前页码 "1"）
+            page_indicator = None
+            try:
+                page_indicator = driver.find_element(By.CSS_SELECTOR, 'span.manga-page')
+            except:
+                page_indicator = driver.find_element(By.CSS_SELECTOR, '#pageNo')
+
+            page_text = page_indicator.text
+            logger.info(f"页面指示: {page_text}")
+
+            # 解析 "1/184P" 或 "1" 格式
+            # 有些章节只有一页，指示器只显示 "1"
+            # 有些章节有多页，指示器显示 "1/184P"
+            if '/' in page_text:
+                # 多页格式: "1/184P"
+                match = page_text.split('/')
+                if match and len(match) >= 2:
+                    total = match[1].rstrip('P').strip()
+                    if total.isdigit():
+                        count = int(total)
+                        logger.info(f"快速获取到图片数量: {count}")
+                        return count
+            else:
+                # 单页格式: "1" 或其他数字
+                if page_text.isdigit():
+                    count = int(page_text)
+                    logger.info(f"单页章节，图片数量: {count}")
+                    return count
+
+            logger.warning(f"页面指示器格式无法解析: {page_text}")
+        except Exception as e:
+            logger.warning(f"获取页面指示器失败: {e}")
+
+        return 0
 
     def close(self):
         """关闭 WebDriver"""

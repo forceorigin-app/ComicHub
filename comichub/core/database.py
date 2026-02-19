@@ -389,6 +389,20 @@ class Database:
         )
         return cur.fetchall()
 
+    def get_chapters_by_url(self, url: str) -> List[Dict]:
+        """
+        通过URL获取章节
+
+        Args:
+            url: 章节URL
+
+        Returns:
+            章节列表
+        """
+        cur = self.conn.cursor(cursor_factory=RealDictCursor)
+        cur.execute("SELECT * FROM chapters WHERE url = %s", (url,))
+        return cur.fetchall()
+
     def get_chapter_images(self, chapter_id: int) -> List[Dict]:
         """
         获取章节的所有图片
